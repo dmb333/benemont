@@ -209,20 +209,53 @@
    Cross-out state is stored on THIS device only and is never
    written back to the sheet.
    ============================================================ */
-const DATA_URL = "https://script.google.com/a/macros/benemont.com/s/AKfycbwlAUegmqnNmDBfTyV2ED8lBqz97VANNVbHLjrhy3BjBMdOitH81RuK_5FEyJ5uaXil/exec?token=bnmt-7Kx2qLpZ9";
+const DATA_URL = "https://script.google.com/a/macros/benemont.com/s/AKfycbwlAUegmqnNmDBfTyV2ED8lBqz97VANNVbHLjrhy3BjBMdOitH81RuK_5FEyJ5uaXil/exec?token=bnmt-7Kx2qLpZ9"; // Apps Script /exec URL + ?token=...
 
-/* Maps CRM status / pipeline_stage values onto the tabs below.
-   Add the values your Fathom automation writes so new prospects
-   land in the right list automatically. */
+/* Maps CRM group_type + group_status onto the tabs below.
+   group_type is the broad bucket ("Prospect" vs "Client"); when it
+   says Prospect, almost everything funnels into your pipeline tabs
+   based on group_status. group_status alone is checked second, for
+   rows where type doesn't clearly say Prospect/Client (or is blank).
+   Add new words here as your Fathom automation introduces them —
+   anything not listed falls back to Clients rather than erroring. */
+const TYPE_TO_TAB = {
+  "prospect":"prospects",
+};
 const STATUS_TO_TAB = {
+  // prospect-side statuses
   "prospect":"prospects", "new prospect":"prospects", "lead":"prospects",
+  "cold lead":"prospects", "warm lead":"prospects", "follow up":"prospects",
+  "project 100":"prospects", "referral":"prospects", "contacted":"prospects",
+  // to-do
   "to do":"todo", "todo":"todo", "task":"todo",
-  "active peo":"activePeo", "in progress":"activePeo", "shopping":"activePeo", "boarding":"activePeo",
+  // active case / shopping / onboarding
+  "active peo":"activePeo", "in progress":"activePeo", "shopping":"activePeo",
+  "boarding":"activePeo", "enrollment started":"activePeo", "proposal":"activePeo",
+  "proposal sent":"activePeo", "demo scheduled":"activePeo",
+  // open enrollment
   "open enrollment":"openEnrollment", "oe":"openEnrollment",
+  // closed / won
   "closed":"closed", "closed/won":"closed", "enrolled":"closed", "won":"closed",
-  "dead":"deadLost", "lost":"deadLost", "dead/lost":"deadLost", "canceled":"deadLost", "cancelled":"deadLost",
+  // dead / lost / not interested
+  "dead":"deadLost", "lost":"deadLost", "dead/lost":"deadLost",
+  "canceled":"deadLost", "cancelled":"deadLost", "not interested":"deadLost",
+  // existing book of business
   "existing":"clients", "client":"clients"
 };
+/* Decide a row's tab: group_type wins when it clearly says Prospect;
+   otherwise fall back to group_status; otherwise Clients. */
+function stageFor(typeVal, statusVal){
+  const t = (typeVal||"").trim().toLowerCase();
+  const s = (statusVal||"").trim().toLowerCase();
+  if(TYPE_TO_TAB[t] && STATUS_TO_TAB[s] && STATUS_TO_TAB[s]!=="clients"){
+    // Prospect-type row with a specific funnel status -> use the status
+    // (e.g. type=Prospect, status="Cold Lead" -> prospects, not clients)
+    return STATUS_TO_TAB[s];
+  }
+  if(TYPE_TO_TAB[t]) return TYPE_TO_TAB[t];
+  if(STATUS_TO_TAB[s]) return STATUS_TO_TAB[s];
+  return "clients";
+}
 
 const STAGES = [
   {key:"prospects",      label:"Prospects",       accent:"var(--prospects)",      desc:"New PEO / case opportunities in the sales process."},
@@ -402,6 +435,7 @@ function cardHTML(item){
   if(item.contact && item.stage==='clients') meta.push(`<span>👤 ${item.contact}</span>`);
   if(item.carrier && item.stage==='clients') meta.push(`<span class="pill">${item.carrier}</span>`);
   if(item.drive) meta.push(`<a href="${item.drive}" target="_blank" rel="noopener">📁 Drive folder</a>`);
+  if(item.sheetUrl) meta.push(`<a href="${item.sheetUrl}" target="_blank" rel="noopener">📝 Open in CRM</a>`);
   const tag = query ? `<span class="pill" style="margin-left:6px">${s.label}</span>` : "";
   // When crossed out, collapse to just the struck-through title — drop the detail.
   const detail = isDone ? "" : `
@@ -484,7 +518,8 @@ function setSync(live){
    headers, so "Company Name" -> "company_name" automatically). */
 const FIELD_MAP = {
   title:   ["company_name","client_name","group_name","name"],
-  status:  ["pipeline_stage","group_status","status","stage"],
+  type:    ["group_type","pipeline_stage_type","record_type","type"],
+  status:  ["group_status","pipeline_stage","status","stage"],
   notes:   ["notes","note","update_notes"],
   contact: ["primary_contact_name","contact_name","contact"],
   phone:   ["primary_contact_phone","contact_phone","phone","phone_number"],
@@ -493,6 +528,7 @@ const FIELD_MAP = {
   comp:    ["expected_comp","approx_commission","commission","comp"],
   date:    ["next_step_date","follow_up_date","date"],
   drive:   ["drive_folder_url","drive_folder","drive_link","folder_url"],
+  sheetUrl:["sheet_url"],
 };
 function pick(row, keys){
   for(const k of keys){ if(row[k]!=null && row[k]!=="") return row[k]; }
@@ -500,8 +536,9 @@ function pick(row, keys){
 }
 function rowsToItems(rows){
   return rows.filter(r=>pick(r,FIELD_MAP.title)).map((r,n)=>{
-    const status=String(pick(r,FIELD_MAP.status)||"").trim().toLowerCase();
-    const stage=STATUS_TO_TAB[status]||"clients";
+    const typeVal=pick(r,FIELD_MAP.type);
+    const statusVal=pick(r,FIELD_MAP.status);
+    const stage=stageFor(typeVal,statusVal);
     return {
       id:"crm-"+n,
       stage,
@@ -514,6 +551,7 @@ function rowsToItems(rows){
       comp:String(pick(r,FIELD_MAP.comp)||""),
       date:String(pick(r,FIELD_MAP.date)||""),
       drive:String(pick(r,FIELD_MAP.drive)||""),
+      sheetUrl:String(pick(r,FIELD_MAP.sheetUrl)||""),
       // keep the raw row too, in case you want a field the UI doesn't show yet
       _raw:r
     };
