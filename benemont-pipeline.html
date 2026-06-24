@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#15564A">
+<title>Benemont Pipeline</title>
+<style>
+  :root{
+    --paper:#F1F0EA;        /* warm light gray background */
+    --surface:#FFFFFF;       /* cards */
+    --ink:#191A17;           /* primary text */
+    --muted:#6C6E66;         /* secondary text */
+    --hair:#E3E1D8;          /* hairline borders */
+    --brand:#15564A;         /* Benemont pine */
+    --done:#A6A89E;          /* crossed-out text */
+    /* stage accents */
+    --prospects:#2563A8;
+    --todo:#6D5BD0;
+    --activePeo:#B45309;
+    --openEnrollment:#C2410C;
+    --closed:#15803D;
+    --deadLost:#737771;
+    --clients:#15564A;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(25,26,23,.05), 0 4px 14px rgba(25,26,23,.04);
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  a{color:inherit;}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky;top:0;z-index:30;
+    background:var(--paper);
+    border-bottom:1px solid var(--hair);
+    padding:14px 16px 0;
+    padding-top:calc(14px + env(safe-area-inset-top));
+  }
+  .titlerow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+  .brand{
+    font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--brand);
+  }
+  h1{
+    margin:2px 0 0;font-size:25px;font-weight:800;letter-spacing:-.02em;
+  }
+  .sync{
+    font-size:12px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:#C9A227;display:inline-block;}
+  .dot.live{background:var(--closed);}
+
+  .search{position:relative;margin:12px 0 10px;}
+  .search input{
+    width:100%;font-size:16px;padding:11px 14px 11px 38px;
+    border:1px solid var(--hair);border-radius:11px;background:var(--surface);
+    color:var(--ink);outline:none;
+  }
+  .search input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(21,86,74,.12);}
+  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.5;}
+
+  /* ---------- Tabs ---------- */
+  nav{
+    display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+    padding:2px 0 12px;margin:0 -16px;padding-left:16px;padding-right:16px;
+  }
+  nav::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;border:1px solid var(--hair);background:var(--surface);
+    border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;
+    color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .tab .count{
+    font-size:12px;font-weight:700;min-width:20px;height:20px;border-radius:999px;
+    display:inline-flex;align-items:center;justify-content:center;padding:0 6px;
+    background:var(--paper);color:var(--muted);
+  }
+  .tab[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .tab[aria-selected="true"] .count{background:rgba(255,255,255,.18);color:#fff;}
+  .tab .swatch{width:8px;height:8px;border-radius:2px;}
+
+  /* ---------- List ---------- */
+  main{max-width:760px;margin:0 auto;padding:14px 16px 60px;}
+  .stagehead{
+    display:flex;align-items:center;justify-content:space-between;
+    margin:2px 0 12px;
+  }
+  .stagehead h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.01em;}
+  .stagehead .desc{font-size:13px;color:var(--muted);margin-top:2px;}
+  .donecount{font-size:12px;color:var(--muted);}
+  .clearbtn{
+    font-size:12px;color:var(--brand);background:none;border:none;cursor:pointer;
+    padding:4px 0;font-weight:600;
+  }
+
+  .card{
+    background:var(--surface);border:1px solid var(--hair);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden;
+    display:flex;
+  }
+  .spine{flex:0 0 5px;background:var(--accent,var(--brand));}
+  .cardbody{flex:1;padding:13px 14px 13px 13px;display:flex;gap:11px;align-items:flex-start;}
+  .check{
+    flex:0 0 auto;width:24px;height:24px;border-radius:50%;
+    border:2px solid var(--accent,var(--brand));background:transparent;
+    cursor:pointer;margin-top:1px;position:relative;transition:background .15s;
+  }
+  .check::after{
+    content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;
+    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) scale(0);
+    transition:transform .15s;
+  }
+  .content{flex:1;min-width:0;}
+  .titleline{font-size:15.5px;font-weight:700;letter-spacing:-.01em;line-height:1.3;}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:5px;font-size:13px;color:var(--muted);}
+  .meta a{color:var(--brand);text-decoration:none;font-weight:600;}
+  .notes{margin-top:7px;font-size:13.5px;color:#3C3E38;line-height:1.5;white-space:pre-line;}
+  .comp{
+    display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+    font-size:12.5px;font-weight:700;color:var(--closed);
+    background:rgba(21,128,61,.08);border-radius:8px;padding:4px 9px;
+  }
+  .pill{
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);background:var(--paper);border-radius:6px;padding:2px 7px;
+  }
+
+  /* done state */
+  .card.done{opacity:.62;}
+  .card.done .check{background:var(--accent,var(--brand));}
+  .card.done .check::after{transform:rotate(45deg) scale(1);}
+  .card.done .titleline{text-decoration:line-through;color:var(--done);text-decoration-thickness:2px;}
+  .card.done .notes,.card.done .comp{text-decoration:line-through;color:var(--done);}
+
+  .empty{
+    text-align:center;color:var(--muted);padding:46px 20px;font-size:14.5px;
+    border:1px dashed var(--hair);border-radius:var(--radius);
+  }
+  .empty b{color:var(--ink);}
+
+  footer{
+    max-width:760px;margin:0 auto;padding:8px 16px 30px;color:var(--muted);font-size:12px;line-height:1.5;
+  }
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+  @media (min-width:620px){ h1{font-size:28px;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="titlerow">
+    <div>
+      <div class="brand">Benemont</div>
+      <h1 id="stageTitle">Pipeline</h1>
+    </div>
+  </div>
+  <div class="sync">
+    <span class="dot" id="syncDot"></span><span id="syncText">Seeded data · not yet live</span>
+  </div>
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search every list…" autocomplete="off" aria-label="Search">
+  </div>
+  <nav id="tabs" role="tablist"></nav>
+</header>
+
+<main>
+  <div class="stagehead">
+    <div>
+      <h2 id="stageHeading"></h2>
+      <div class="desc" id="stageDesc"></div>
+    </div>
+    <div style="text-align:right">
+      <div class="donecount" id="doneCount"></div>
+      <button class="clearbtn" id="hideBtn" hidden></button>
+      <button class="clearbtn" id="clearBtn" hidden>Uncheck all</button>
+    </div>
+  </div>
+  <div id="list"></div>
+</main>
+
+<footer id="foot"></footer>
+
+<script>
+/* ============================================================
+   DATA SOURCE  —  the one place to wire up the live CRM
+   ------------------------------------------------------------
+   To go live: deploy the included Apps Script as a Web App
+   (see benemont-apps-script.gs) and paste its URL + your token
+   below, e.g.:
+   "https://script.google.com/macros/s/AKfycb.../exec?token=YOURTOKEN"
+   The app fetches that URL, maps each row's status -> tab and
+   its notes -> the detail text, and refreshes on every load.
+   Until DATA_URL is set, the app uses the seeded data below.
+   Cross-out state is stored on THIS device only and is never
+   written back to the sheet.
+   ============================================================ */
+const DATA_URL = "https://script.google.com/macros/s/AKfycbylTeTfg7TCNkDSVl5gUPpj6dIEYYnNABBLW39iUQqx8gIVFE6mWEk_jAkjse43Rpo/exec?token=bnmt-7Kx2qLpZ9";
+
+/* Maps CRM status / pipeline_stage values onto the tabs below.
+   Add the values your Fathom automation writes so new prospects
+   land in the right list automatically. */
+const STATUS_TO_TAB = {
+  "prospect":"prospects", "new prospect":"prospects", "lead":"prospects",
+  "to do":"todo", "todo":"todo", "task":"todo",
+  "active peo":"activePeo", "in progress":"activePeo", "shopping":"activePeo", "boarding":"activePeo",
+  "open enrollment":"openEnrollment", "oe":"openEnrollment",
+  "closed":"closed", "closed/won":"closed", "enrolled":"closed", "won":"closed",
+  "dead":"deadLost", "lost":"deadLost", "dead/lost":"deadLost", "canceled":"deadLost", "cancelled":"deadLost",
+  "existing":"clients", "client":"clients"
+};
+
+const STAGES = [
+  {key:"prospects",      label:"Prospects",       accent:"var(--prospects)",      desc:"New PEO / case opportunities in the sales process."},
+  {key:"todo",           label:"To-Do",           accent:"var(--todo)",           desc:"Daily reminders and things to get to."},
+  {key:"activePeo",      label:"Active PEO Cases", accent:"var(--activePeo)",      desc:"Being shopped or going through onboarding — on the way to closed."},
+  {key:"openEnrollment", label:"Open Enrollment", accent:"var(--openEnrollment)", desc:"Active OE cases to push to completion."},
+  {key:"closed",         label:"Closed Deals",    accent:"var(--closed)",         desc:"Recently won — carrier/PEO and approximate commission."},
+  {key:"deadLost",       label:"Dead / Lost",     accent:"var(--deadLost)",       desc:"Fell off — worth a check-in to see if there's life left."},
+  {key:"clients",        label:"Clients",         accent:"var(--clients)",        desc:"Look up the existing book — contact, carrier, and Drive folder."},
+];
+
+/* ---------- Seeded pipeline (from your Reminders) ---------- */
+const SEED = [
+  // PROSPECTS
+  {id:"p-atlantic", stage:"prospects", title:"Atlantic Tomorrow's Office", date:"4/16",
+   notes:"Sent email reminder about NDA.\nPresented Unitas wellness plan with Chris Bernardine. Brian Sosa client, Citrin Cooperman.\nFollow-up email to get their NDA on the 16th. Karin Smith and Richard."},
+  {id:"p-safety", stage:"prospects", title:"‼️ Safety Facility Service",
+   notes:"Ref from Sal Leone.\nUnitas wellness program.\nSet up meeting with Blake and Sam."},
+  {id:"p-forst", stage:"prospects", title:"Forst Legal — referral opportunity", date:"6/15",
+   notes:"Sent email template to Glenn. FU again — sent email 5/26. Sent FU email to get started again 5/21.\nMet with Sadler, Schuyler and Glen. Asked to reach back out in 30 days to connect and get started."},
+  {id:"p-volsario", stage:"prospects", title:"Laura Volsario — Gateway Arms",
+   notes:"Need to follow up. Had interest but flaked out."},
+  {id:"p-parallel", stage:"prospects", title:"Parallel Architecture", date:"6/12",
+   notes:"Sent email 6/15. Spoke to Shareefa 6/10 — said she'd have docs by Friday, if not call her.\nAppt rescheduled for 5/26 @ 10am. Made appt with Shareefa for 5/13."},
+  {id:"p-springlake", stage:"prospects", title:"Spring Lake", date:"9/9 · 1:00 PM",
+   notes:"Hard no from board for a move now. Will revisit in November.\nMet with Extensis 3/25, did present — FU meeting scheduled for 4/2."},
+  {id:"p-pride", stage:"prospects", title:"Pride Heating and Air", date:"6/11 · 3:00 PM", phone:"347-225-6017",
+   notes:"Ref Mike Tietlebaum. Marc is owner."},
+  {id:"p-grace", stage:"prospects", title:"The Grace Foundation",
+   notes:"Cathy Delpriore. Ref Brian Licata."},
+
+  // TO-DO
+  {id:"t-joeb", stage:"todo", title:"Email Joe B — ref Jeff McNamara, Pines Manor (catering)", phone:"732-642-5148", email:"Jeff@pinesmanor.com",
+   notes:"Edison NJ. 4–5 on medical, 4–5 on MEC, 85 avg payroll, 70 FT.\nWants email on clients like him we've worked with and saved or made better."},
+  {id:"t-pedowitz", stage:"todo", title:"Work on Pedowitz OE",
+   notes:"Spoke with Chris — he's getting a new census as of 5/27. Start getting things in order to run OE."},
+  {id:"t-glennfrost", stage:"todo", title:"Send Glenn Frost email — to send to clients + agreement"},
+  {id:"t-honeygrove", stage:"todo", title:"Set up Honey Grove 3 with Val and Vensure",
+   notes:"Sent email. Need to set up call with Chris."},
+  {id:"t-templates", stage:"todo", title:"Send 4 email templates",
+   notes:"Send updated prospects list, send screenshots and video of To-Do."},
+
+  // ACTIVE PEO CASES
+  {id:"a-monroe", stage:"activePeo", title:"Monroe Fire",
+   notes:"3/8 — Mike from RE sent FU to chief about doctor lookup.\nMet with Chief 3/30. Sending doc search and plan designs. Rescheduling for a week or so from now."},
+  {id:"a-oakwood", stage:"activePeo", title:"Oakwood Dental", date:"4/28",
+   notes:"Sent group-size doc to Ryan, PGP. 4/10 pulled docs from Paychex and requested dependent census.\nSubmitted to JustWorks; submit to others once census is in. Send medical details to Dan Campbell and Launchways."},
+  {id:"a-abcstone", stage:"activePeo", title:"ABC Stone",
+   notes:"Meeting went well. Setting up demos with Decision HR and Armor for the 28th.\nExpected decision by June 12, July 1 start. Proposal meeting set for May 5 at 12pm. Sent to Archon for proposals."},
+  {id:"a-carmina", stage:"activePeo", title:"Carmina", date:"6/10", notes:"Proposal review 6/10."},
+  {id:"a-isa", stage:"activePeo", title:"ISA", date:"6/16", notes:"Proposal review scheduled 6/16."},
+  {id:"a-honeygrove3", stage:"activePeo", title:"Honey Grove 3"},
+  {id:"a-dcyfr", stage:"activePeo", title:"Dcyfr"},
+
+  // OPEN ENROLLMENT
+  {id:"o-rumc", stage:"openEnrollment", title:"RUMC"},
+  {id:"o-pedowitz", stage:"openEnrollment", title:"Pedowitz",
+   notes:"Spoke with Chris — getting a new census as of 5/27. Start getting things in order to run OE."},
+
+  // CLOSED DEALS
+  {id:"c-golconda", stage:"closed", title:"Golconda", carrier:"ArmHR", comp:"~$880 / mo",
+   notes:"Closed with ArmHR. Sent check-in email 4/7 — need an answer. Met 3/25, intro to ArmHR for Mon 3/30. 55 per enrolled."},
+  {id:"c-ronnykobo", stage:"closed", title:"Ronny Kobo", carrier:"Amplify", comp:"~$250 / mo",
+   notes:"Closed / Won — Amplify."},
+  {id:"c-haddad", stage:"closed", title:"Haddad Law", carrier:"Amplify", comp:"~$1,250 / mo",
+   notes:"Closed / Won with Amplify."},
+  {id:"c-target", stage:"closed", title:"Target Research", carrier:"Resourcing Edge", comp:"~$405 / mo",
+   notes:"Closed with Resourcing Edge. Benefits meeting 4/9. Amanda presenting to boss 3/26.\n20% admin fee and 1% of medical."},
+  {id:"c-blacktalon", stage:"closed", title:"Black Talon", carrier:"Engage (G&A)", comp:"~$1,300 / mo",
+   notes:"Closed with Engage. Met with Josh from BT 3/25. G&A — 5% medical, 5% admin fee."},
+  {id:"c-templar", stage:"closed", title:"Templar — Jeff", carrier:"JustWorks / G&A", comp:"~$540 / mo",
+   notes:"Set up demo with JustWorks for concerns 4/14. Catch-up 3/8 — questions to confirm, ancillaries to review.\nMet JustWorks 3/24, meeting G&A 3/26. JustWorks 45 PEPM or G&A 5% medical admin + ancillaries."},
+
+  // DEAD / LOST
+  {id:"d-vernon", stage:"deadLost", title:"Vernon Construction — move to PEO",
+   notes:"Received new census 4/21. Submitting for PEO and small-group medical 4/22.\n4/17 spoke with client, sending over new census. Ref Tino Lardi. Current plan not paying claims. Sent to FNA 4/13 for quotes."},
+  {id:"d-eco", stage:"deadLost", title:"Eco Electrical — waiting on Tom",
+   notes:"Last spoke, this was Tom's group and waiting to hear back from them."},
+  {id:"d-sc", stage:"deadLost", title:"SC International — all DTQ'd for PEO move",
+   notes:"Will schedule meeting to discuss PEO removal."},
+  {id:"d-fusco", stage:"deadLost", title:"David A. Fusco CPA"},
+  {id:"d-grandst", stage:"deadLost", title:"Grand Street Dental"},
+  {id:"d-aviation", stage:"deadLost", title:"The Aviation Office"},
+  {id:"d-anewway", stage:"deadLost", title:"A New Way Counseling"},
+  {id:"d-dimpiero", stage:"deadLost", title:"Brad Dimpiero DMD — Lincroft Dental"},
+  {id:"d-bbw", stage:"deadLost", title:"Brooklyn Body Works Physical Therapy"},
+  {id:"d-creative", stage:"deadLost", title:"Creative Displays"},
+  {id:"d-dr", stage:"deadLost", title:"D&R Communication"},
+  {id:"d-express", stage:"deadLost", title:"Express Abstract Services"},
+  {id:"d-fortunato", stage:"deadLost", title:"Fortunato Concrete Pools"},
+];
+
+/* ---------- Sample of the CRM client book (Clients tab) ----------
+   A real slice so lookup works today; the full book loads when you
+   wire DATA_URL to the published sheet. */
+const CLIENTS = [
+  {id:"cl-anewway", stage:"clients", title:"A New Way Counseling", contact:"Dr. Siobhan Berger", phone:"(908) 997-1650", email:"drberger@anewwaycp.com", carrier:"The Hartford", drive:"https://drive.google.com/drive/folders/1hP1W3-f2SaJIq5R8zqJgm5NaG_Z5XOXJ"},
+  {id:"cl-aaron", stage:"clients", title:"Aaron Plumbing & Mechanical", contact:"Shirley Lopez", phone:"718-984-3011", email:"shirley@aaronplumbingny.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1McVBX2UimA93KDRYet16uw0fz3POpi94"},
+  {id:"cl-activedesign", stage:"clients", title:"Active Design Group", contact:"Narendra Shah", phone:"973-272-0705", email:"nshah@axisd.com", carrier:"Aflac (cancelled)", drive:"https://drive.google.com/drive/folders/10yJXz3UULjZaWAUUSnQvMxblBouJsQ7e"},
+  {id:"cl-agir", stage:"clients", title:"Agir Electrical (Pinnacle Electric)", contact:"Michelle Cardino", phone:"(718) 846-6200", email:"michelle.cardino@pinnacleelectric.org", carrier:"Guardian", drive:"https://drive.google.com/drive/folders/1VL12KlUE9f5oe9jMt2YymQaKDN2RcRCL"},
+  {id:"cl-applemetro", stage:"clients", title:"Apple Metro Inc", contact:"Stacy Scott", phone:"914-777-2331", email:"sscott@applemetro.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1dI0iq2q17k_ljlF-qlKKuiXOJ_-c5Gyr"},
+  {id:"cl-capacity", stage:"clients", title:"Capacity LLC", contact:"Victor Ramos", phone:"(732) 745-7770 x261", email:"vramos@capacityllc.com", carrier:"Allstate", drive:"https://drive.google.com/drive/folders/1IGfzmMiLd9TOvg-LeUU1QlQjvTtb8Ng1"},
+  {id:"cl-carlos", stage:"clients", title:"Carlo's Bakery", contact:"Rhea Manansala", phone:"201-659-3671", email:"rhea@carlosbakery.com", carrier:"Allstate", drive:"https://drive.google.com/drive/folders/1xHTLcuU3pOpy8xXXndfdjNXljufd6OJ5"},
+  {id:"cl-coffee", stage:"clients", title:"Coffee Holding Company", contact:"David Gordon", phone:"718-832-0800", email:"dgordon@coffeeholding.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1A5huXDOWiDI0p9xQkN5HrKr0ftn4bfPM"},
+  {id:"cl-crossroads", stage:"clients", title:"Crossroads Healthcare", contact:"Priscilla Arnone", phone:"917-573-0875", email:"parnone@crossroadshc.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1ohrP4Ui0r-540cqj8uqk3xCqsBiaF2-K"},
+  {id:"cl-delco", stage:"clients", title:"Delco Electrical Corp", contact:"Susan Deluca", phone:"(212) 221-0068 x107", email:"susan@delcoelectric.net", carrier:"Aflac · Transamerica", drive:"https://drive.google.com/drive/folders/1RumTMNRhiv6TX4blutHf8o8CXuM2lJqd"},
+  {id:"cl-fusco", stage:"clients", title:"David A. Fusco CPA", contact:"Dave Fusco", phone:"718-667-4545", email:"dfusco@fuscoassociates.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1yXQ1nn5nX4QjaS8jbehI2EKPPT9EkMFR"},
+  {id:"cl-eatclean", stage:"clients", title:"Eat Clean Bro", contact:"Joe Squillaro", phone:"866-258-1890", email:"joe@eatcleanbro.com", carrier:"Guardian", drive:"https://drive.google.com/drive/folders/1p1UbfbaptncKWddRLs1jtzuXSoEGplUO"},
+  {id:"cl-eger", stage:"clients", title:"Eger Health Care & Rehab", contact:"Donna Basile", phone:"718-989-3031", email:"", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1OjVgLGBFux5CuPj3--JhjSf1DJ31wEf5"},
+  {id:"cl-fedway", stage:"clients", title:"Fedway Associates Inc", contact:"Luz Soto", phone:"908-394-6240", email:"lsoto@fedway.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1H8t0RiEDoVJWn4fMf_nQ2SuP36Q_vU9N"},
+  {id:"cl-gnt", stage:"clients", title:"GNT Mechanical LLC", contact:"Nicole Armenti", phone:"718-836-8033", email:"na@gntmech.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1UnjMGYdaSzkJcferfawAwZMoOZUETiwF"},
+  {id:"cl-haddad", stage:"clients", title:"Haddad Law Offices", contact:"Adla Haddad", phone:"732-933-3535", email:"ahaddad@sphlaw.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/11R3nfHrWdIx4dstSDGPcDLCMtQ1E0Fr-"},
+  {id:"cl-herrick", stage:"clients", title:"Herrick Feinstein LLP", contact:"Patricia Gold", phone:"212-498-5302", email:"", carrier:"—", drive:"https://drive.google.com/drive/folders/1YpoNpTep-OxowYiuFA8yYufjn4VTRuG6"},
+  {id:"cl-hereford", stage:"clients", title:"Hereford Insurance Company", contact:"Annie Weinstein", phone:"(718) 361-9191", email:"aweinstein@herefordinsurance.com", carrier:"In progress", drive:"https://drive.google.com/drive/folders/1CLAPCDJ0j9HoXe-uPYSnRjUoUhSryvHl"},
+  {id:"cl-creative", stage:"clients", title:"Creative Displays Inc", contact:"Heather Perry", phone:"732-918-8010", email:"heather@cdi25.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1oSmybrdebbbDKLbsbVnQt9Bz_13zseQQ"},
+  {id:"cl-express", stage:"clients", title:"Express Abstract", contact:"—", phone:"718-667-3208", email:"", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/1YD-rzb-cCO1dEp0N18aTRC1xbEoxSauE"},
+  {id:"cl-brooklynmuseum", stage:"clients", title:"Brooklyn Museum", contact:"Gabriela Astudilo", phone:"718-501-6170", email:"", carrier:"—", drive:"https://drive.google.com/drive/folders/1Rz4Qr0nPqNKc956jenmn81RN0yLbXsQH"},
+  {id:"cl-empire", stage:"clients", title:"Empire Commercial Services", contact:"Christian Fama", phone:"718-727-9572", email:"adangelo@empirecomsvs.com", carrier:"Aflac", drive:"https://drive.google.com/drive/folders/15eZjOp6sFdNuSw2pn1-ZtuCLxLuO9HvN"},
+];
+
+/* ============================================================
+   App logic
+   ============================================================ */
+const STORE_KEY = "benemont_pipeline_done_v1";
+let DATA = [...SEED, ...CLIENTS];
+let activeTab = STAGES[0].key;
+let query = "";
+
+/* crossed-out state — device-only, survives reloads where storage works */
+function loadDone(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch(e){ return {}; }
+}
+function saveDone(d){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(d)); }catch(e){}
+}
+let done = loadDone();
+let hideDone = (()=>{ try{ return localStorage.getItem(STORE_KEY+"_hide")==="1"; }catch(e){ return false; } })();
+function setHide(v){ hideDone=v; try{ localStorage.setItem(STORE_KEY+"_hide", v?"1":"0"); }catch(e){} }
+
+const stageByKey = Object.fromEntries(STAGES.map(s=>[s.key,s]));
+const $ = sel => document.querySelector(sel);
+
+function counts(){
+  const c = {};
+  STAGES.forEach(s=>c[s.key]=0);
+  DATA.forEach(i=>{ if(c[i.stage]!=null) c[i.stage]++; });
+  return c;
+}
+
+function renderTabs(){
+  const c = counts();
+  $("#tabs").innerHTML = STAGES.map(s=>`
+    <button class="tab" role="tab" data-key="${s.key}" aria-selected="${s.key===activeTab}">
+      <span class="swatch" style="background:${s.accent}"></span>${s.label}
+      <span class="count">${c[s.key]}</span>
+    </button>`).join("");
+  $("#tabs").querySelectorAll(".tab").forEach(t=>{
+    t.onclick=()=>{ activeTab=t.dataset.key; query=""; $("#search").value=""; render(); 
+      t.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"}); };
+  });
+}
+
+function matches(item){
+  if(!query) return true;
+  const hay = [item.title,item.notes,item.contact,item.carrier,item.comp,item.phone,item.email].filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(query);
+}
+
+function cardHTML(item){
+  const s = stageByKey[item.stage];
+  const isDone = !!done[item.id];
+  const meta = [];
+  if(item.date) meta.push(`<span>📅 ${item.date}</span>`);
+  if(item.phone) meta.push(`<a href="tel:${item.phone.replace(/[^0-9+]/g,'')}">📞 ${item.phone}</a>`);
+  if(item.email) meta.push(`<a href="mailto:${item.email}">✉️ ${item.email}</a>`);
+  if(item.contact && item.stage==='clients') meta.push(`<span>👤 ${item.contact}</span>`);
+  if(item.carrier && item.stage==='clients') meta.push(`<span class="pill">${item.carrier}</span>`);
+  if(item.drive) meta.push(`<a href="${item.drive}" target="_blank" rel="noopener">📁 Drive folder</a>`);
+  const tag = query ? `<span class="pill" style="margin-left:6px">${s.label}</span>` : "";
+  // When crossed out, collapse to just the struck-through title — drop the detail.
+  const detail = isDone ? "" : `
+        ${meta.length?`<div class="meta">${meta.join("")}</div>`:""}
+        ${item.notes?`<div class="notes">${item.notes}</div>`:""}
+        ${item.comp?`<div class="comp">💰 ${item.comp}</div>`:""}`;
+  return `
+  <div class="card ${isDone?'done':''}" style="--accent:${s.accent}">
+    <div class="spine"></div>
+    <div class="cardbody">
+      <button class="check" data-id="${item.id}" role="checkbox" aria-checked="${isDone}" aria-label="Cross out ${item.title}"></button>
+      <div class="content">
+        <div class="titleline">${item.title}${tag}</div>${detail}
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  renderTabs();
+  const s = stageByKey[activeTab];
+  $("#stageTitle").textContent = query ? "Search" : "Pipeline";
+  $("#stageHeading").textContent = query ? `Results for "${query}"` : s.label;
+  $("#stageDesc").textContent = query ? "Across every list." : s.desc;
+
+  let pool = query ? DATA.filter(matches) : DATA.filter(i=>i.stage===activeTab);
+  if(hideDone) pool = pool.filter(i=>!done[i.id]);
+  const list = $("#list");
+
+  if(pool.length===0){
+    let msg;
+    if(query) msg = `Nothing matches <b>"${query}"</b> yet.`;
+    else if(hideDone && DATA.some(i=>i.stage===activeTab && done[i.id]))
+      msg = `Everything in <b>${s.label}</b> is crossed out.<br>Tap "Show crossed-out" to see them again.`;
+    else msg = `No items in <b>${s.label}</b> yet.<br>New ones from the CRM will land here automatically.`;
+    list.innerHTML = `<div class="empty">${msg}</div>`;
+  } else {
+    list.innerHTML = pool.map(cardHTML).join("");
+    list.querySelectorAll(".check").forEach(btn=>{
+      btn.onclick=()=>{
+        const id=btn.dataset.id;
+        if(done[id]) delete done[id]; else done[id]=true;
+        saveDone(done); render();
+      };
+    });
+  }
+
+  // done counter + buttons (only on a real stage, not search)
+  const doneEl=$("#doneCount"), clearEl=$("#clearBtn"), hideEl=$("#hideBtn");
+  if(!query){
+    const inStage = DATA.filter(i=>i.stage===activeTab);
+    const d = inStage.filter(i=>done[i.id]).length;
+    doneEl.textContent = d ? `${d} of ${inStage.length} crossed out` : "";
+    clearEl.hidden = d===0;
+    clearEl.onclick=()=>{ inStage.forEach(i=>delete done[i.id]); saveDone(done); render(); };
+    hideEl.hidden = d===0;
+    hideEl.textContent = hideDone ? "Show crossed-out" : "Hide crossed-out";
+    hideEl.onclick=()=>{ setHide(!hideDone); render(); };
+  } else { doneEl.textContent=""; clearEl.hidden=true; hideEl.hidden=true; }
+}
+
+/* search */
+$("#search").addEventListener("input", e=>{ query=e.target.value.trim().toLowerCase(); render(); });
+
+/* footer / sync status */
+function setSync(live){
+  $("#syncDot").classList.toggle("live", live);
+  $("#syncText").textContent = live
+    ? `Live from CRM · updated ${new Date().toLocaleString()}`
+    : "Seeded data · not yet live";
+  $("#foot").innerHTML = live
+    ? "Reading the private CRM endpoint. Crossing out an item is saved on this device only and never changes the sheet."
+    : "Showing your seeded pipeline plus a sample of the CRM client book. To go live, deploy the included Apps Script and set <code>DATA_URL</code> at the top of this file — new Fathom-added prospects will then appear automatically. Cross-outs stay on this device and never touch the sheet.";
+}
+
+/* ---------- optional live load ---------- */
+/* Maps the Apps Script's normalized column names onto the fields
+   the app renders. Add any column names your sheet actually uses
+   on the left if they differ (the script lowercases + underscores
+   headers, so "Company Name" -> "company_name" automatically). */
+const FIELD_MAP = {
+  title:   ["company_name","client_name","group_name","name"],
+  status:  ["pipeline_stage","group_status","status","stage"],
+  notes:   ["notes","note","update_notes"],
+  contact: ["primary_contact_name","contact_name","contact"],
+  phone:   ["primary_contact_phone","contact_phone","phone","phone_number"],
+  email:   ["primary_contact_email","contact_email","email"],
+  carrier: ["carrier","peo","peo_carrier"],
+  comp:    ["expected_comp","approx_commission","commission","comp"],
+  date:    ["next_step_date","follow_up_date","date"],
+  drive:   ["drive_folder_url","drive_folder","drive_link","folder_url"],
+};
+function pick(row, keys){
+  for(const k of keys){ if(row[k]!=null && row[k]!=="") return row[k]; }
+  return "";
+}
+function rowsToItems(rows){
+  return rows.filter(r=>pick(r,FIELD_MAP.title)).map((r,n)=>{
+    const status=String(pick(r,FIELD_MAP.status)||"").trim().toLowerCase();
+    const stage=STATUS_TO_TAB[status]||"clients";
+    return {
+      id:"crm-"+n,
+      stage,
+      title:String(pick(r,FIELD_MAP.title)).trim(),
+      notes:String(pick(r,FIELD_MAP.notes)||""),
+      contact:String(pick(r,FIELD_MAP.contact)||""),
+      phone:String(pick(r,FIELD_MAP.phone)||""),
+      email:String(pick(r,FIELD_MAP.email)||""),
+      carrier:String(pick(r,FIELD_MAP.carrier)||""),
+      comp:String(pick(r,FIELD_MAP.comp)||""),
+      date:String(pick(r,FIELD_MAP.date)||""),
+      drive:String(pick(r,FIELD_MAP.drive)||""),
+      // keep the raw row too, in case you want a field the UI doesn't show yet
+      _raw:r
+    };
+  });
+}
+async function init(){
+  if(DATA_URL){
+    try{
+      const res=await fetch(DATA_URL,{cache:"no-store"});
+      const json=await res.json();
+      if(json.error){ console.warn("Data endpoint error:",json.error); setSync(false); }
+      else{
+        const items=rowsToItems(json.rows||[]);
+        if(items.length){ DATA=items; setSync(true); }
+        else setSync(false);
+      }
+    }catch(e){ console.warn("Live load failed, using seed:",e); setSync(false); }
+  } else setSync(false);
+  render();
+}
+init();
+</script>
+</body>
+</html>
