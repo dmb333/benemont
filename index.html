@@ -211,6 +211,14 @@
    ============================================================ */
 const DATA_URL = "https://script.google.com/a/macros/benemont.com/s/AKfycbwlAUegmqnNmDBfTyV2ED8lBqz97VANNVbHLjrhy3BjBMdOitH81RuK_5FEyJ5uaXil/exec?token=bnmt-7Kx2qLpZ9"; // Apps Script /exec URL + ?token=...
 
+/* The real Benemont CRM app (search, edit, contacts, policies, welcome
+   email). It can't deep-link to one specific record — it's a single-
+   page app whose address bar never changes — so every card links to
+   the same home screen; Anthony searches/taps from there. Paste your
+   CRM app's /exec URL below. Leave blank to fall back to a link that
+   jumps straight to that row in the raw spreadsheet instead. */
+const CRM_APP_URL = "https://script.google.com/a/macros/benemont.com/s/AKfycbylTeTfg7TCNkDSVl5gUPpj6dIEYYnNABBLW39iUQqx8gIVFE6mWEk_jAkjse43Rpo/exec";
+
 /* Maps CRM group_type + group_status onto the tabs below.
    group_type is the broad bucket ("Prospect" vs "Client"); when it
    says Prospect, almost everything funnels into your pipeline tabs
@@ -220,6 +228,7 @@ const DATA_URL = "https://script.google.com/a/macros/benemont.com/s/AKfycbwlAUeg
    anything not listed falls back to Clients rather than erroring. */
 const TYPE_TO_TAB = {
   "prospect":"prospects",
+  "to-do":"todo", "to do":"todo",
 };
 const STATUS_TO_TAB = {
   // prospect-side statuses
@@ -435,7 +444,8 @@ function cardHTML(item){
   if(item.contact && item.stage==='clients') meta.push(`<span>👤 ${item.contact}</span>`);
   if(item.carrier && item.stage==='clients') meta.push(`<span class="pill">${item.carrier}</span>`);
   if(item.drive) meta.push(`<a href="${item.drive}" target="_blank" rel="noopener">📁 Drive folder</a>`);
-  if(item.sheetUrl) meta.push(`<a href="${item.sheetUrl}" target="_blank" rel="noopener">📝 Open in CRM</a>`);
+  if(CRM_APP_URL) meta.push(`<a href="${CRM_APP_URL}" target="_blank" rel="noopener">📝 Open in CRM</a>`);
+  else if(item.sheetUrl) meta.push(`<a href="${item.sheetUrl}" target="_blank" rel="noopener">📝 Open in CRM sheet</a>`);
   const tag = query ? `<span class="pill" style="margin-left:6px">${s.label}</span>` : "";
   // When crossed out, collapse to just the struck-through title — drop the detail.
   const detail = isDone ? "" : `
@@ -517,7 +527,7 @@ function setSync(live){
    on the left if they differ (the script lowercases + underscores
    headers, so "Company Name" -> "company_name" automatically). */
 const FIELD_MAP = {
-  title:   ["company_name","client_name","group_name","name"],
+  title:   ["company_name","client_name","group_name","name","task"],
   type:    ["group_type","pipeline_stage_type","record_type","type"],
   status:  ["group_status","pipeline_stage","status","stage"],
   notes:   ["notes","note","update_notes"],
@@ -529,18 +539,27 @@ const FIELD_MAP = {
   date:    ["next_step_date","follow_up_date","date"],
   drive:   ["drive_folder_url","drive_folder","drive_link","folder_url"],
   sheetUrl:["sheet_url"],
+  done:    ["done"],
 };
 function pick(row, keys){
   for(const k of keys){ if(row[k]!=null && row[k]!=="") return row[k]; }
   return "";
 }
 function rowsToItems(rows){
-  return rows.filter(r=>pick(r,FIELD_MAP.title)).map((r,n)=>{
+  return rows.filter(r=>pick(r,FIELD_MAP.title)).map((r)=>{
     const typeVal=pick(r,FIELD_MAP.type);
     const statusVal=pick(r,FIELD_MAP.status);
     const stage=stageFor(typeVal,statusVal);
+    // Stable id: prefer the sheet's own group_id, fall back to the
+    // sheet row number (both stay constant even if other rows shift),
+    // so cross-out state doesn't drift onto the wrong item over time.
+    const stableId = (r.group_id!=null && r.group_id!=="")
+      ? "crm-g"+r.group_id
+      : "crm-r"+(r.sheet_row!=null?r.sheet_row:Math.random());
+    const doneVal = String(pick(r,FIELD_MAP.done)||"").trim().toLowerCase();
+    const doneFromSheet = ["true","yes","x","done","1"].includes(doneVal);
     return {
-      id:"crm-"+n,
+      id:stableId,
       stage,
       title:String(pick(r,FIELD_MAP.title)).trim(),
       notes:String(pick(r,FIELD_MAP.notes)||""),
@@ -552,6 +571,7 @@ function rowsToItems(rows){
       date:String(pick(r,FIELD_MAP.date)||""),
       drive:String(pick(r,FIELD_MAP.drive)||""),
       sheetUrl:String(pick(r,FIELD_MAP.sheetUrl)||""),
+      doneFromSheet,
       // keep the raw row too, in case you want a field the UI doesn't show yet
       _raw:r
     };
@@ -605,8 +625,18 @@ async function init(){
       if(json.error){ console.warn("Data endpoint error:",json.error); setSync(false); }
       else{
         const items=rowsToItems(json.rows||[]);
-        if(items.length){ DATA=items; setSync(true); }
-        else setSync(false);
+        if(items.length){
+          DATA=items;
+          // If the sheet's own "done" column says a to-do is finished,
+          // reflect that locally too (sheet wins on load; tapping the
+          // checkbox afterward still just updates this device, same
+          // as everything else — the sheet is only ever read, never
+          // written to by this app).
+          let changed=false;
+          items.forEach(i=>{ if(i.doneFromSheet && !done[i.id]){ done[i.id]=true; changed=true; } });
+          if(changed) saveDone(done);
+          setSync(true);
+        } else setSync(false);
       }
     }catch(e){ console.warn("Live load failed, using seed:",e); setSync(false); }
   } else setSync(false);
