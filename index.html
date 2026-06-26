@@ -444,8 +444,14 @@ function cardHTML(item){
   if(item.contact && item.stage==='clients') meta.push(`<span>👤 ${item.contact}</span>`);
   if(item.carrier && item.stage==='clients') meta.push(`<span class="pill">${item.carrier}</span>`);
   if(item.drive) meta.push(`<a href="${item.drive}" target="_blank" rel="noopener">📁 Drive folder</a>`);
-  if(CRM_APP_URL) meta.push(`<a href="${CRM_APP_URL}" target="_blank" rel="noopener">📝 Open in CRM</a>`);
-  else if(item.sheetUrl) meta.push(`<a href="${item.sheetUrl}" target="_blank" rel="noopener">📝 Open in CRM sheet</a>`);
+  if(item.stage!=='todo'){
+    if(CRM_APP_URL){
+      const crmLink = CRM_APP_URL + (CRM_APP_URL.indexOf("?")>=0 ? "&" : "?") + "company=" + encodeURIComponent(item.title);
+      meta.push(`<a href="${crmLink}" target="_blank" rel="noopener">📝 Open in CRM</a>`);
+    } else if(item.sheetUrl){
+      meta.push(`<a href="${item.sheetUrl}" target="_blank" rel="noopener">📝 Open in CRM sheet</a>`);
+    }
+  }
   const tag = query ? `<span class="pill" style="margin-left:6px">${s.label}</span>` : "";
   // When crossed out, collapse to just the struck-through title — drop the detail.
   const detail = isDone ? "" : `
